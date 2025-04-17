@@ -40,8 +40,10 @@ pipeline {
                     script {
                         def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                         def imageTag = "${DOCKER_IMAGE}:${commitHash}"
+                        
+                        // Utiliser une commande sh propre pour login Docker
                         sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
                             docker push $imageTag || { echo 'Échec du push de l\'image Docker'; exit 1; }
                         """
                     }
