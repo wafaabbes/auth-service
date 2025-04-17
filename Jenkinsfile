@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     tools {
-        nodejs "NodeJS 18" // Assure-toi d’avoir défini ce nom dans Jenkins > Global Tools
+        nodejs "NodeJS 18"
     }
 
     environment {
         DOCKER_IMAGE = 'auth-service'
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        DOCKER_REGISTRY = 'docker.io/wafa23' // <-- remplace par ton vrai registre
+        DOCKER_TAG = "${BRANCH_NAME}-${BUILD_NUMBER}"
+        DOCKER_REGISTRY = 'docker.io/wafa23'
         DOCKER_CREDENTIALS = credentials('docker-registry-credentials')
         KUBE_NAMESPACE_DEV = 'development'
         KUBE_NAMESPACE_PROD = 'production'
@@ -36,11 +36,10 @@ pipeline {
 
         stage('Code Quality') {
             steps {
-                sh 'npm run lint'
-                // Optionnel : Activer SonarQube
-                // withSonarQubeEnv('SonarQube') {
-                //     sh 'npm run sonar'
-                // }
+                withSonarQubeEnv('SonarQube') {
+                    sh 'npm run lint'
+                    sh 'npm run sonar'
+                }
             }
         }
 
@@ -61,6 +60,7 @@ pipeline {
         stage('Security Scan') {
             steps {
                 sh """
+                    npm audit || true
                     trivy image ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} || true
                 """
             }
@@ -82,11 +82,10 @@ pipeline {
                 branch 'develop'
             }
             steps {
-                script {
-                    sh """
-                        kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_DEV}
-                    """
-                }
+                sh """
+                    kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_DEV}
+                    kubectl rollout status deployment/auth-service --namespace=${KUBE_NAMESPACE_DEV}
+                """
             }
         }
 
@@ -96,11 +95,10 @@ pipeline {
             }
             steps {
                 input message: 'Confirmez le déploiement en production ?'
-                script {
-                    sh """
-                        kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_PROD}
-                    """
-                }
+                sh """
+                    kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_PROD}
+                    kubectl rollout status deployment/auth-service --namespace=${KUBE_NAMESPACE_PROD}
+                """
             }
         }
     }
@@ -108,13 +106,11 @@ pipeline {
     post {
         success {
             echo '✅ Pipeline terminée avec succès !'
-            // Exemple de notification Slack :
             // slackSend channel: '#deployments', color: 'good', message: "Déploiement réussi pour ${env.JOB_NAME} [#${env.BUILD_NUMBER}]"
         }
 
         failure {
             echo '❌ Échec de la pipeline.'
-            // Exemple de notification Slack :
             // slackSend channel: '#deployments', color: 'danger', message: "Échec du déploiement pour ${env.JOB_NAME} [#${env.BUILD_NUMBER}]"
         }
 
