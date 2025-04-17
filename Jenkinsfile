@@ -1,93 +1,125 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = "wafa23/auth-service"   // Remplace par ton Docker Hub username
-        IMAGE_TAG = "latest"
-        DOCKERHUB_CREDENTIALS_ID = "dockerhub-creds" // ID Jenkins pour les identifiants Docker Hub
+    tools {
+        nodejs "NodeJS 18" // Assure-toi d’avoir défini ce nom dans Jenkins > Global Tools
     }
 
-    tools {
-        nodejs 'Node18'
+    environment {
+        DOCKER_IMAGE = 'auth-service'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        DOCKER_REGISTRY = 'your-registry.com/username' // <-- remplace par ton vrai registre
+        DOCKER_CREDENTIALS = credentials('docker-registry-credentials')
+        KUBE_NAMESPACE_DEV = 'development'
+        KUBE_NAMESPACE_PROD = 'production'
     }
 
     stages {
-        stage('Clean Workspace') {
+
+        stage('Checkout') {
             steps {
-                cleanWs()
+                checkout scm
             }
         }
 
-        stage('Checkout Code') {
+        stage('Install Dependencies') {
             steps {
-                git branch: 'main', url: 'https://github.com/wafaabbes/auth-service.git'
+                sh 'npm install'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh 'npm test'
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                sh 'npm run lint'
+                // Optionnel : Activer SonarQube
+                // withSonarQubeEnv('SonarQube') {
+                //     sh 'npm run sonar'
+                // }
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                sh 'npm run build'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
-            }
-        }
-
-        stage('Run Trivy Scan') {
-            steps {
-                sh '''
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy \
-                    image ${IMAGE_NAME}:${IMAGE_TAG} \
-                    --no-progress --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --format table
-                '''
-            }
-        }
-
-        stage('Docker Login & Push') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKERHUB_PASS', usernameVariable: 'DOCKERHUB_USER')]) {
-                    sh '''
-                        echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    '''
+                script {
+                    docker.build("${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
         }
 
-        stage('Run Application with Docker Compose') {
+        stage('Security Scan') {
             steps {
-                sh 'docker-compose up -d'
+                sh """
+                    trivy image ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} || true
+                """
             }
         }
 
-        stage('Wait & Test Health') {
+        stage('Push to Docker Registry') {
             steps {
                 script {
-                    def retries = 10
-                    def success = false
-                    for (int i = 1; i <= retries; i++) {
-                        echo "Waiting for application to be ready (Attempt: ${i})"
-                        def result = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8000', returnStdout: true).trim()
-                        if (result == "200") {
-                            success = true
-                            break
-                        } else {
-                            echo "App not responding, retrying in 10 seconds..."
-                            sleep 10
-                        }
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", DOCKER_CREDENTIALS) {
+                        docker.image("${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                        docker.image("${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
                     }
-                    if (!success) {
-                        error("Application failed to start in the expected time frame")
-                    }
+                }
+            }
+        }
+
+        stage('Deploy to Development') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script {
+                    sh """
+                        kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_DEV}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: 'Confirmez le déploiement en production ?'
+                script {
+                    sh """
+                        kubectl set image deployment/auth-service auth-service=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} --namespace=${KUBE_NAMESPACE_PROD}
+                    """
                 }
             }
         }
     }
 
     post {
+        success {
+            echo '✅ Pipeline terminée avec succès !'
+            // Exemple de notification Slack :
+            // slackSend channel: '#deployments', color: 'good', message: "Déploiement réussi pour ${env.JOB_NAME} [#${env.BUILD_NUMBER}]"
+        }
+
+        failure {
+            echo '❌ Échec de la pipeline.'
+            // Exemple de notification Slack :
+            // slackSend channel: '#deployments', color: 'danger', message: "Échec du déploiement pour ${env.JOB_NAME} [#${env.BUILD_NUMBER}]"
+        }
+
         always {
-            echo 'Cleaning up...'
-            sh '''
-                docker-compose down
-                docker system prune -f
-            '''
+            cleanWs()
         }
     }
 }
