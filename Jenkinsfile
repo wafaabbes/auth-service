@@ -20,7 +20,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main', credentialsId: 'github', url: 'https://github.com/ton-utilisateur/ton-repo'
+                 git branch: 'main', url: 'https://github.com/wafaabbes/auth-service.git'
             }
         }
 
