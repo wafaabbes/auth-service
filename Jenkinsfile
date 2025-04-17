@@ -8,7 +8,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'auth-service'
         DOCKER_TAG = "${BUILD_NUMBER}"
-        DOCKER_REGISTRY = 'your-registry.com/username' // <-- remplace par ton vrai registre
+        DOCKER_REGISTRY = 'docker.io/wafa23' // <-- remplace par ton vrai registre
         DOCKER_CREDENTIALS = credentials('docker-registry-credentials')
         KUBE_NAMESPACE_DEV = 'development'
         KUBE_NAMESPACE_PROD = 'production'
