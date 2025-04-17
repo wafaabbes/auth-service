@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "wafa/aut-service"     // Remplace par ton Docker Hub username
+        IMAGE_NAME = "wafa23/aut-service"     // Remplace par ton Docker Hub username
         IMAGE_TAG = "latest"
         DOCKERHUB_CREDENTIALS_ID = "dockerhub-creds" // ID Jenkins pour les identifiants Docker Hub
     }
