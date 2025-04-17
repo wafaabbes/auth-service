@@ -1,0 +1,41 @@
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: wafa23/auth-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+        - name: DB_HOST
+          value: "postgres" # Adapt si nécessaire
+        - name: DB_NAME
+          value: "auth_service"
+        - name: DB_USER
+          value: "wafa"
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: auth-secrets
+              key: db-pass
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-secrets
+              key: jwt-secret
