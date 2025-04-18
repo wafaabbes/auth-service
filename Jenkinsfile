@@ -5,6 +5,12 @@ pipeline {
         DOCKER_IMAGE = "wafaabbes/auth-service"
     }
 
+    options {
+        skipStagesAfterUnstable()
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -20,7 +26,9 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'npm test || echo "Tests échoués (continuer pour debug)"'
+                // Utilisation de npx ou ajout d'exécution explicite à jest
+                sh 'chmod +x ./node_modules/.bin/jest || true'
+                sh 'npx jest || echo "Tests échoués (continuer pour debug)"'
             }
         }
 
@@ -41,10 +49,9 @@ pipeline {
                         def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                         def imageTag = "${DOCKER_IMAGE}:${commitHash}"
 
-                        // Utilisation de guillemets pour sécuriser les variables et éviter toute erreur de parsing
                         sh """
                             echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                            docker push \"$imageTag\" || { echo 'Échec du push de l\'image Docker'; exit 1; }
+                            docker push "$imageTag" || { echo 'Échec du push de l\'image Docker'; exit 1; }
                         """
                     }
                 }
@@ -53,8 +60,14 @@ pipeline {
     }
 
     post {
+        success {
+            echo '✅ Pipeline exécutée avec succès !'
+        }
+        failure {
+            echo '❌ Une erreur est survenue pendant le pipeline.'
+        }
         always {
-            echo 'Pipeline terminée'
+            echo '📝 Pipeline terminée.'
         }
     }
 }
