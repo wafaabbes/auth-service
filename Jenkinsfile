@@ -26,9 +26,8 @@ pipeline {
 
         stage('Test') {
             steps {
-                // Utilisation de npx ou ajout d'exécution explicite à jest
-                sh 'chmod +x ./node_modules/.bin/jest || true'
-                sh 'npx jest || echo "Tests échoués (continuer pour debug)"'
+                // Utilisation de npx pour exécuter les tests
+                sh 'npx jest || echo "⚠️ Tests échoués (continuer pour debug)"'
             }
         }
 
@@ -37,7 +36,7 @@ pipeline {
                 script {
                     def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     def imageTag = "${DOCKER_IMAGE}:${commitHash}"
-                    sh "docker build -t $imageTag ."
+                    sh "docker build -t ${imageTag} ."
                 }
             }
         }
@@ -49,9 +48,10 @@ pipeline {
                         def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                         def imageTag = "${DOCKER_IMAGE}:${commitHash}"
 
-                        sh """
-                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                            docker push "$imageTag" || { echo 'Échec du push de l\'image Docker'; exit 1; }
+                        // Utilisation correcte des triples guillemets et pas de quotes imbriqués problématiques
+                        sh """#!/bin/bash
+                        echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
+                        docker push ${imageTag} || { echo "❌ Échec du push de l'image Docker"; exit 1; }
                         """
                     }
                 }
