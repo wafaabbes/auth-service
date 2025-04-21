@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "wafaabbes/auth-service"
+        DOCKER_IMAGE = "wafa23/auth-service"
     }
 
     options {
