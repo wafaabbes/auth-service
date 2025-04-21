@@ -44,15 +44,15 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    script {
-                        def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                        def imageTag = "${DOCKER_IMAGE}:${commitHash}"
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            script {
+                def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                def imageTag = "${DOCKER_IMAGE}:${commitHash}"
 
-                        sh """
-                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                            docker push "$imageTag" || { echo 'Échec du push de l\'image Docker'; exit 1; }
-                        """
+                sh """
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    docker push "$imageTag" || { echo "Échec du push de l'image Docker"; exit 1; }
+                """
                     }
                 }
             }
