@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "wafa23/auth-service"
-        SONARQUBE = 'SonarQube-Server'  // Le nom que tu as donné dans Jenkins > Configure System
+        SONARQUBE_URL = 'http://localhost:9000'  // URL de votre instance SonarQube
+        SONARQUBE_TOKEN = 'sqa_083d3a60a2cef15c85af22637b779ab67c853e86'  // Remplacez par votre token SonarQube
     }
 
     options {
@@ -25,13 +26,21 @@ pipeline {
             }
         }
          stage('SonarQube Analysis') {
-      steps {
-        withSonarQubeEnv("${SONARQUBE}") {
-          sh 'sonar-scanner'
+            steps {
+                script {
+                    // Utilisation de l'image Docker officielle de SonarQube Scanner
+                    docker.image('sonarsource/sonar-scanner-cli').inside {
+                        sh '''
+                            sonar-scanner \
+                              -Dsonar.projectKey=mon-projet \
+                              -Dsonar.sources=. \
+                              -Dsonar.host.url=$SONARQUBE_URL \
+                              -Dsonar.login=$SONARQUBE_TOKEN
+                        '''
+                    }
+                }
+            }
         }
-      }
-    }
-
         stage('Test') {
             steps {
                 // Utilisation de npx ou ajout d'exécution explicite à jest
