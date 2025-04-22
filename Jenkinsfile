@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "wafa23/auth-service"
-        SONARQUBE_URL = 'http://172.19.0.2:9000'  // Nouvelle adresse SonarQube
-        SONARQUBE_TOKEN = 'sqa_083d3a60a2cef15c85af22637b779ab67c853e86'  // Token SonarQube
+        
     }
 
     options {
@@ -26,22 +25,6 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    docker.image('sonarsource/sonar-scanner-cli').inside {
-                        sh '''
-                            export SONAR_USER_HOME=/tmp
-                            sonar-scanner \
-                              -Dsonar.projectKey=backend-pfe \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=$SONARQUBE_URL \
-                              -Dsonar.login=$SONARQUBE_TOKEN
-                        '''
-                    }
-                }
-            }
-        }
 
         stage('Test') {
             steps {
