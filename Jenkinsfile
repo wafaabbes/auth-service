@@ -26,21 +26,22 @@ pipeline {
             }
         }
          stage('SonarQube Analysis') {
-            steps {
-                script {
-                    // Utilisation de l'image Docker officielle de SonarQube Scanner
-                    docker.image('sonarsource/sonar-scanner-cli').inside {
-                        sh '''
-                            sonar-scanner \
-                              -Dsonar.projectKey=mon-projet \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=$SONARQUBE_URL \
-                              -Dsonar.login=$SONARQUBE_TOKEN
-                        '''
-                    }
-                }
+             steps {
+             script {
+            docker.image('sonarsource/sonar-scanner-cli').inside {
+                sh '''
+                    export SONAR_USER_HOME=/tmp
+                    sonar-scanner \
+                      -Dsonar.projectKey=mon-projet \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=$SONARQUBE_URL \
+                      -Dsonar.login=$SONARQUBE_TOKEN
+                '''
             }
         }
+    }
+}
+
         stage('Test') {
             steps {
                 // Utilisation de npx ou ajout d'exécution explicite à jest
