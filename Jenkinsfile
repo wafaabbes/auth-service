@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "wafa23/auth-service"
+        SONARQUBE = 'SonarQube-Server'  // Le nom que tu as donné dans Jenkins > Configure System
     }
 
     options {
@@ -23,6 +24,13 @@ pipeline {
                 sh 'npm install'
             }
         }
+         stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv("${SONARQUBE}") {
+          sh 'sonar-scanner'
+        }
+      }
+    }
 
         stage('Test') {
             steps {
