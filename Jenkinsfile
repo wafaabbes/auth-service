@@ -3,7 +3,7 @@ inpipeline {
 
     environment {
         DOCKER_IMAGE = "wafa23/auth-service"
-        SONAR_TOKEN = credentials('sonar-token') // Stocké dans Jenkins Credentials
+        SONAR_TOKEN = credentials('jenkins-sonar') // Stocké dans Jenkins Credentials
         SONAR_HOST_URL = 'http://localhost:9000' // Change avec l'URL de ton serveur Sonar
     }
 
