@@ -35,7 +35,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQubeServer') {
+                withSonarQubeEnv('MySonarQube') {
                     sh """
                         npx sonar-scanner \
                         -Dsonar.projectKey=auth-service \
