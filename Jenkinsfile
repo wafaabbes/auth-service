@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "wafa23/auth-service"
-        
+        SONAR_TOKEN = credentials('sonar-token') // Stocké dans Jenkins Credentials
+        SONAR_HOST_URL = 'http://localhost:9000' // Change avec l'URL de ton serveur Sonar
     }
 
     options {
@@ -25,11 +26,24 @@ pipeline {
             }
         }
 
-
         stage('Test') {
             steps {
                 sh 'chmod +x ./node_modules/.bin/jest || true'
                 sh 'npx jest || echo "Tests échoués (continuer pour debug)"'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh """
+                        npx sonar-scanner \
+                        -Dsonar.projectKey=auth-service \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_TOKEN
+                    """
+                }
             }
         }
 
